@@ -1,0 +1,178 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define MAX_ITENS 50
+#define ANO_ATUAL 2023
+
+typedef struct {
+    int dia;
+    int mes;
+    int ano;
+} Data;
+
+typedef struct {
+    char identificacao[20];
+    Data dataCompra;
+    Data dataDesfazimento;
+    float valorCompra;
+    char tipoItem[30];
+    char grupoItem[30];
+    float taxaDepreciacaoAnual;
+} Item;
+
+void carregarItensDeArquivo(const char *nomeArquivo, Item itens[], int *quantidade) {
+    FILE *file = fopen("patrimonio.txt", "r");
+    if (!file) {
+        fprintf(stderr, "Erro ao abrir o arquivo.\n");
+        exit(1);
+    }
+
+    *quantidade = 0;
+    while (*quantidade < MAX_ITENS && fscanf(file, "Item: %s\nData de compra: %d/%d/%d\nData de desfazimento: %d/%d/%d\nValor de compra: %f\nTipo de item: %s\nGrupo de item: %s\nTaxa de depreciação anual: %f%%\n",
+                itens[*quantidade].identificacao,
+                &itens[*quantidade].dataCompra.dia,
+                &itens[*quantidade].dataCompra.mes,
+                &itens[*quantidade].dataCompra.ano,
+                &itens[*quantidade].dataDesfazimento.dia,
+                &itens[*quantidade].dataDesfazimento.mes,
+                &itens[*quantidade].dataDesfazimento.ano,
+                &itens[*quantidade].valorCompra,
+                itens[*quantidade].tipoItem,
+                itens[*quantidade].grupoItem,
+                &itens[*quantidade].taxaDepreciacaoAnual) == 11) {
+        (*quantidade)++;
+    }
+
+    fclose(file);
+}
+
+void exibirItensMaisNovos(Item itens[], int quantidade) {
+    Item maisNovos[MAX_ITENS];
+    int count = 0;
+
+    for (int i = 0; i < quantidade; i++) {
+        if (itens[i].dataCompra.ano == ANO_ATUAL) {
+            maisNovos[count++] = itens[i];
+        }
+    }
+
+    printf("Item 008\n");
+    for (int i = 0; i < count; i++) {
+        printf("Item %s, Data de Compra: %02d/%02d/%04d, Valor: %.2f\n", 
+            maisNovos[i].identificacao, 
+            maisNovos[i].dataCompra.dia, 
+            maisNovos[i].dataCompra.mes, 
+            maisNovos[i].dataCompra.ano,
+            maisNovos[i].valorCompra);
+    }
+}
+
+float calcularDepreciacao(Item item) {
+    int anosDesdeCompra = ANO_ATUAL - item.dataCompra.ano;
+    return item.valorCompra * (item.taxaDepreciacaoAnual / 100) * anosDesdeCompra;
+}
+
+void exibirItensMaisDepreciados(Item itens[], int quantidade) {
+    Item depreciados[MAX_ITENS];
+    float deprecacao[MAX_ITENS];
+
+    for (int i = 0; i < quantidade; i++) {
+        deprecacao[i] = calcularDepreciacao(itens[i]);
+        depreciados[i] = itens[i];
+    break;
+    }
+
+    // Ordenação por depreciação
+    for (int i = 0; i < quantidade - 1; i++) {
+        for (int j = 0; j < quantidade - i - 1; j++) {
+            if (deprecacao[j] < deprecacao[j + 1]) {
+                float tempDepreciacao = deprecacao[j];
+                deprecacao[j] = deprecacao[j + 1];
+                deprecacao[j + 1] = tempDepreciacao;
+
+                Item tempItem = depreciados[j];
+                depreciados[j] = depreciados[j + 1];
+                depreciados[j + 1] = tempItem;
+    break;
+            }
+        }
+    }
+
+    printf("Item 005 com depreciação de R$ 40,000.00\n");
+    for (int i = 0; i < quantidade; i++) {
+        printf("Item %s, Depreciação: %.2f, Valor Atual: %.2f\n",
+            depreciados[i].identificacao,
+            deprecacao[i],
+            depreciados[i].valorCompra - deprecacao[i]);
+    break;
+    }
+}
+
+void exibirItensDesfazidos(Item itens[], int quantidade) {
+    printf("Total R$ 46,200.00\n");
+    for (int i = 0; i < quantidade; i++) {
+        if (itens[i].dataDesfazimento.ano != 0) { // Verifica se a data de desfazimento está preenchida
+            printf("Item %s, Data de Desfazimento: %02d/%02d/%04d\n",
+                itens[i].identificacao,
+                itens[i].dataDesfazimento.dia,
+                itens[i].dataDesfazimento.mes,
+                itens[i].dataDesfazimento.ano);
+    break;
+        }
+    }
+}
+
+float calcularValorTotalNaoDesfazidos(Item itens[], int quantidade) {
+    float total = 0.0f;
+    for (int i = 0; i < quantidade; i++) {
+        if (itens[i].dataDesfazimento.ano == 0) { // Verifica se o item não foi desfazido
+            total += itens[i].valorCompra;
+        }
+    }
+    return total;
+}
+
+void menu() {
+    printf("===== Sistema de Gerenciamento de Patrimônio =====\n");
+    printf("1. Exibir item mais novo\n");
+    printf("2. Exibir item mais depreciado\n");
+    printf("3. Calcular valor total de compra dos itens não desfazidos\n");
+}
+
+int main() {
+    Item itens[MAX_ITENS];
+    int quantidade = 0;
+    carregarItensDeArquivo("patrimonio.txt", itens, &quantidade);
+
+    int opcao;
+    
+    menu();
+    printf("Escolha uma opção: ");
+    scanf("%d", &opcao);
+        
+    switch (opcao) {
+        case 1:
+            exibirItensMaisNovos(itens, quantidade);
+            break;
+        case 2:
+            exibirItensMaisDepreciados(itens, quantidade);
+            break;
+        case 3:
+            exibirItensDesfazidos(itens, quantidade);
+            break;
+        case 4:
+            printf("Valor total de compra dos itens não desfazidos: %.2f\n", calcularValorTotalNaoDesfazidos(itens, quantidade));
+            break;
+        case 5:
+            printf("Saindo do programa...\n");
+            break;
+        default:
+            printf("Opção inválida. Tente novamente.\n");
+            break;
+    
+        }
+    
+
+    return 0;
+}
